@@ -8,6 +8,7 @@ import Foundation
 final class SeekRequest {
     let lock = UnfairLock()
     var requested: Bool = false
-    var version = Protected<Int>(0)
+    @Protected
+    var version: Int = 0
     var time: Double = 0
 }

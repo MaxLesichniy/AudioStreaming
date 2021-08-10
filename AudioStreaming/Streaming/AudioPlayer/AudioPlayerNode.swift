@@ -1,14 +1,15 @@
 //
-//  Created by Dimitrios Chatzieleftheriou on 01/06/2020.
-//  Copyright © 2020 Decimal. All rights reserved.
+//  AudioPlayerNode.swift
+//  AudioStreaming
+//
+//  Created by Max Lesichniy on 02.08.2021.
 //
 
 import AVFoundation
 import CoreAudio
-import CoreAudioTypes
 
-open class AudioPlayer {
-    public weak var delegate: AudioPlayerDelegate?
+open class AudioPlayerNode: AVAudioPlayerNode {
+    public weak var delegate: AudioPlayerNodeDelegate?
 
     public var muted: Bool {
         get { playerContext.muted }
@@ -19,10 +20,10 @@ open class AudioPlayer {
     ///
     /// Defaults to 1.0. Valid ranges are 0.0 to 1.0
     /// The value is restricted from 0.0 to 1.0
-    public var volume: Float {
-        get { audioEngine.mainMixerNode.outputVolume }
-        set { audioEngine.mainMixerNode.outputVolume = min(1.0, max(0.0, newValue)) }
-    }
+//    public var volume: Float {
+//        get { audioEngine.mainMixerNode.outputVolume }
+//        set { audioEngine.mainMixerNode.outputVolume = min(1.0, max(0.0, newValue)) }
+//    }
 
     /// The playback rate of the player.
     ///
@@ -30,10 +31,10 @@ open class AudioPlayer {
     ///
     /// **NOTE:** Setting this to a value of more than `1.0` while playing a live broadcast stream would
     /// result in the audio being exhausted before it could fetch new data.
-    public var rate: Float {
-        get { rateNode.rate }
-        set { rateNode.rate = newValue }
-    }
+//    public var rate: Float {
+//        get { rateNode.rate }
+//        set { rateNode.rate = newValue }
+//    }
 
     /// The player's current state.
     public var state: AudioPlayerState {
@@ -106,7 +107,7 @@ open class AudioPlayer {
     }()
 
     /// Keeps track of the player's state before being paused.
-    private var stateBeforePaused: InternalState = .initial
+    private var stateBeforePaused: AudioPlayer.InternalState = .initial
 
     /// The underlying `AVAudioEngine` object
     private let audioEngine = AVAudioEngine()
@@ -117,7 +118,7 @@ open class AudioPlayer {
 
     /// An object representing the context of the audio render.
     /// Holds the audio buffer and in/out lists as required by the audio rendering
-    public let rendererContext: AudioRendererContext
+    private let rendererContext: AudioRendererContext
     /// An object representing the context of the player.
     /// Holds the player's state, current playing and reading entries.
     private let playerContext: AudioPlayerContext
@@ -134,6 +135,10 @@ open class AudioPlayer {
 
     var entriesQueue: PlayerQueueEntries
 
+    public convenience init(configuration: AudioPlayerConfiguration = .default, url: URL) {
+        self.init(configuration: configuration)
+    }
+    
     public init(configuration: AudioPlayerConfiguration = .default) {
         self.configuration = configuration.normalizeValues()
 
@@ -159,6 +164,8 @@ open class AudioPlayer {
                                                            rendererContext: rendererContext,
                                                            outputAudioFormat: outputAudioFormat.basicStreamDescription)
 
+        super.init()
+        
         configPlayerContext()
         configPlayerNode()
         setupEngine()
@@ -256,7 +263,8 @@ open class AudioPlayer {
     }
 
     /// Stops the audio playback
-    public func stop() {
+    open override func stop() {
+        super.stop()
         guard playerContext.internalState != .stopped else { return }
 
         stopReadProccessFromSource()
@@ -283,7 +291,8 @@ open class AudioPlayer {
     }
 
     /// Pauses the audio playback
-    public func pause() {
+    open override func pause() {
+        super.pause()
         if playerContext.internalState != .paused, playerContext.internalState.contains(.running) {
             stateBeforePaused = playerContext.internalState
             playerContext.setInternalState(to: .paused)
@@ -690,35 +699,6 @@ open class AudioPlayer {
                                                                progress: progress,
                                                                duration: duration)
                 }
-                
-                let url = try! FileManager.default.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: true).appendingPathComponent("\(Int(Date().timeIntervalSince1970)).wav")
-
-                let outputFormatSettings = [
-                    AVFormatIDKey: kAudioFormatLinearPCM,
-                    AVLinearPCMBitDepthKey: 32,
-                    AVLinearPCMIsFloatKey: true,
-                    //  AVLinearPCMIsBigEndianKey: false,
-                    AVSampleRateKey: 44100.0,
-                    AVNumberOfChannelsKey: 2
-                    ] as [String : Any]
-
-                let format = AVAudioFormat(settings: outputFormatSettings)!
-                let writeFile = try! AVAudioFile(forWriting: url,
-                                                 settings: outputFormatSettings,
-                                                 commonFormat: .pcmFormatFloat32,
-                                                 interleaved: true)
-
-                if let pcmBuffer = AVAudioPCMBuffer(pcmFormat: format,
-                                                    frameCapacity: self.rendererContext.bufferContext.totalFrameCount) {
-                    memcpy(pcmBuffer.mutableAudioBufferList[0].mBuffers.mData,
-                           self.rendererContext.audioBuffer.mData,
-                           Int(self.rendererContext.audioBuffer.mDataByteSize))
-                    pcmBuffer.mutableAudioBufferList[0].mBuffers.mNumberChannels = 2
-                    pcmBuffer.mutableAudioBufferList[0].mBuffers.mDataByteSize = self.rendererContext.audioBuffer.mDataByteSize
-                    pcmBuffer.mutableAudioBufferList[0].mNumberBuffers = 1
-                    pcmBuffer.frameLength = self.rendererContext.bufferContext.totalFrameCount
-                    try! writeFile.write(from: pcmBuffer)
-                }
             }
         }
 
@@ -787,7 +767,7 @@ open class AudioPlayer {
     }
 }
 
-extension AudioPlayer: AudioStreamSourceDelegate {
+extension AudioPlayerNode: AudioStreamSourceDelegate {
     func dataAvailable(source: CoreAudioStreamSource, data: Data) {
         guard let readingEntry = playerContext.audioReadingEntry, readingEntry.has(same: source) else {
             return

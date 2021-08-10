@@ -53,7 +53,7 @@ final class AudioPlayerRenderProcessor: NSObject {
         let playingEntry = playerContext.audioPlayingEntry
         let readingEntry = playerContext.audioReadingEntry
         playerContext.entriesLock.unlock()
-        let isMuted = playerContext.muted.value
+        let isMuted = playerContext.muted
         let state = playerContext.internalState
 
         rendererContext.lock.lock()
@@ -65,7 +65,7 @@ final class AudioPlayerRenderProcessor: NSObject {
         let used = bufferContext.frameUsedCount
         let start = bufferContext.frameStartIndex
         let end = bufferContext.end
-        let signal = rendererContext.waiting.value && used < bufferContext.totalFrameCount / 2
+        let signal = rendererContext.waiting && used < bufferContext.totalFrameCount / 2
 
         if let playingEntry = playingEntry {
             playingEntry.lock.lock()
@@ -74,7 +74,7 @@ final class AudioPlayerRenderProcessor: NSObject {
             if state == .waitingForData {
                 var requiredFramesToStart = rendererContext.framesRequiredToStartPlaying
                 if framesState.lastFrameQueued >= 0 {
-                    requiredFramesToStart = min(requiredFramesToStart, UInt32(playingEntry.framesState.lastFrameQueued))
+                    requiredFramesToStart = min(requiredFramesToStart, UInt32(framesState.lastFrameQueued))
                 }
                 if let readingEntry = readingEntry, readingEntry === playingEntry,
                    framesState.queued < requiredFramesToStart
@@ -191,17 +191,17 @@ final class AudioPlayerRenderProcessor: NSObject {
                 }
             } else if state == .waitingForDataAfterSeek {
                 if totalFramesCopied == 0 {
-                    rendererContext.waitingForDataAfterSeekFrameCount.write { $0 += Int32(inNumberFrames - totalFramesCopied) }
-                    if rendererContext.waitingForDataAfterSeekFrameCount.value > rendererContext.framesRequiredForDataAfterSeekPlaying {
+                    rendererContext.waitingForDataAfterSeekFrameCount += Int32(inNumberFrames - totalFramesCopied)
+                    if rendererContext.waitingForDataAfterSeekFrameCount > rendererContext.framesRequiredForDataAfterSeekPlaying {
                         if playerContext.internalState != .playing {
                             playerContext.setInternalState(to: .playing) { state -> Bool in
                                 state.contains(.running) && state != .playing
                             }
                         }
-                        rendererContext.waitingForDataAfterSeekFrameCount.write { $0 = 0 }
+                        rendererContext.waitingForDataAfterSeekFrameCount = 0
                     }
                 } else {
-                    rendererContext.waitingForDataAfterSeekFrameCount.write { $0 = 0 }
+                    rendererContext.waitingForDataAfterSeekFrameCount = 0
                 }
             }
         }
@@ -209,6 +209,7 @@ final class AudioPlayerRenderProcessor: NSObject {
         guard let currentPlayingEntry = playingEntry else {
             return nil
         }
+        
         currentPlayingEntry.lock.lock()
 
         var extraFramesPlayedNotAssigned: Int = 0
@@ -225,6 +226,7 @@ final class AudioPlayerRenderProcessor: NSObject {
         let lastFramePlayed = currentPlayingEntry.framesState.played == currentPlayingEntry.framesState.lastFrameQueued
 
         currentPlayingEntry.lock.unlock()
+        
         if signal || lastFramePlayed {
             playerContext.entriesLock.lock()
             let entry = playerContext.audioPlayingEntry
@@ -261,7 +263,7 @@ final class AudioPlayerRenderProcessor: NSObject {
                     }
                 }
             }
-            if rendererContext.waiting.value {
+            if rendererContext.waiting {
                 rendererContext.packetsSemaphore.signal()
             }
         }

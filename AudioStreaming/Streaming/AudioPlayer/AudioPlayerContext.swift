@@ -6,16 +6,15 @@
 import Foundation
 
 internal final class AudioPlayerContext {
-    var stopReason = Protected<AudioPlayerStopReason>(.none)
+    @Protected
+    var stopReason: AudioPlayerStopReason = .none
 
-    var state = Protected<AudioPlayerState>(.ready)
+    @Protected
+    var state: AudioPlayerState = .ready
     var stateChanged: ((_ oldState: AudioPlayerState, _ newState: AudioPlayerState) -> Void)?
 
-    var muted = Protected<Bool>(false)
-
-    var internalState: AudioPlayer.InternalState {
-        playerInternalState.value
-    }
+    @Protected
+    var muted: Bool = false
 
     let entriesLock = UnfairLock()
     var audioReadingEntry: AudioEntry?
@@ -26,7 +25,8 @@ internal final class AudioPlayerContext {
     /// This is the player's internal state to use
     /// - NOTE: Do not use directly instead use the `internalState` to set and get the property
     /// or the `setInternalState(to:when:)`method
-    private var playerInternalState = Protected<AudioPlayer.InternalState>(.initial)
+    @Protected
+    var internalState: AudioPlayer.InternalState = .initial
 
     init() {
         disposedRequested = false
@@ -41,15 +41,15 @@ internal final class AudioPlayerContext {
                                    when inState: ((AudioPlayer.InternalState) -> Bool)? = nil)
     {
         let newValues = playerStateAndStopReason(for: state)
-        stopReason.write { $0 = newValues.stopReason }
+        stopReason = newValues.stopReason
         guard state != internalState else { return }
         if let inState = inState, !inState(internalState) {
             return
         }
-        playerInternalState.write { $0 = state }
-        let previousPlayerState = self.state.value
+        internalState = state
+        let previousPlayerState = self.state
         if newValues.state != previousPlayerState {
-            self.state.write { $0 = newValues.state }
+            self.state = newValues.state
             stateChanged?(previousPlayerState, newValues.state)
         }
     }

@@ -6,6 +6,7 @@
 //
 
 import AVFoundation
+import CoreAudio
 
 enum AudioConvertStatus: Int32 {
     case done = 100
@@ -26,7 +27,7 @@ enum FileStreamProcessorEffect {
 
 /// An object that handles the proccessing of AudioFileStream, its packets etc.
 final class AudioFileStreamProcessor {
-    private let maxCompressedPacketForBitrate = 4096
+    private let maxCompressedPacketForBitrate = 4096 * 4
 
     var fileStreamCallback: ((FileStreamProcessorEffect) -> Void)?
 
@@ -144,7 +145,7 @@ final class AudioFileStreamProcessor {
 
         readingEntry.reset()
         readingEntry.seek(at: Int(seekByteOffset))
-        rendererContext.waitingForDataAfterSeekFrameCount.write { $0 = 0 }
+        rendererContext.waitingForDataAfterSeekFrameCount = 0
         playerContext.setInternalState(to: .waitingForDataAfterSeek)
         rendererContext.resetBuffers()
     }
@@ -352,7 +353,7 @@ final class AudioFileStreamProcessor {
            playingEntry.seekRequest.requested, playingEntry.calculatedBitrate() > 0
         {
             fileStreamCallback?(.proccessSource)
-            if rendererContext.waiting.value {
+            if rendererContext.waiting {
                 rendererContext.packetsSemaphore.signal()
             }
             return
@@ -413,15 +414,15 @@ final class AudioFileStreamProcessor {
                        playingEntry.seekRequest.requested, playingEntry.calculatedBitrate() > 0
                     {
                         fileStreamCallback?(.proccessSource)
-                        if rendererContext.waiting.value {
+                        if rendererContext.waiting {
                             rendererContext.packetsSemaphore.signal()
                         }
                         return
                     }
 
-                    rendererContext.waiting.write { $0 = true }
+                    rendererContext.waiting = true
                     rendererContext.packetsSemaphore.wait()
-                    rendererContext.waiting.write { $0 = false }
+                    rendererContext.waiting = false
                 }
             }
 
@@ -523,6 +524,8 @@ final class AudioFileStreamProcessor {
                                         dataOffset: Int,
                                         framesToDecode: UInt32)
     {
+        Logger.debug("prefillLocalBufferList dataOffset: %d, framesToDecode: %d", category: .generic, args: dataOffset, framesToDecode)
+        
         if let mData = rendererContext.audioBuffer.mData {
             bufferList[0].mData = dataOffset > 0 ? mData + dataOffset : mData
         }
