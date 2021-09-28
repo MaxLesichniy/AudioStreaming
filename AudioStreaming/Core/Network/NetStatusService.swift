@@ -60,7 +60,7 @@ final class NetStatusService: NetStatusProvider {
     /// - Note:  The callback will be executed on the main thread.
     func start(connectionChange: @escaping (NetConnectionType) -> Void) {
         network.pathUpdateHandler = { [weak self] path in
-            guard let self = self else { return }
+            guard let `self` = self else { return }
             let connecionType = path.toNetConnectionType()
             if self.currentConnectionType != connecionType {
                 connectionChange(self.connectionType)

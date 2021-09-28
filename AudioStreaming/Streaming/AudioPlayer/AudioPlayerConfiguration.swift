@@ -21,13 +21,16 @@ public struct AudioPlayerConfiguration: Equatable {
 
     /// Enables the internal logs
     let enableLogs: Bool
+    
+    let urlSessionConfiguration: URLSessionConfiguration
 
     public static let `default` = AudioPlayerConfiguration(flushQueueOnSeek: true,
                                                            bufferSizeInSeconds: 10,
                                                            secondsRequiredToStartPlaying: 1,
                                                            gracePeriodAfterSeekInSeconds: 0.5,
                                                            secondsRequiredToStartPlayingAfterBufferUnderun: 1,
-                                                           enableLogs: false)
+                                                           enableLogs: false,
+                                                           urlSessionConfiguration: .networkingConfiguration)
     /// Initializes the configuration for the `AudioPlayer`
     ///
     /// Parameters are pre set for convenience
@@ -44,7 +47,8 @@ public struct AudioPlayerConfiguration: Equatable {
                 secondsRequiredToStartPlaying: Double = 1,
                 gracePeriodAfterSeekInSeconds: Double = 0.5,
                 secondsRequiredToStartPlayingAfterBufferUnderun: Int = 1,
-                enableLogs: Bool = false)
+                enableLogs: Bool = false,
+                urlSessionConfiguration: URLSessionConfiguration)
     {
         self.flushQueueOnSeek = flushQueueOnSeek
         self.bufferSizeInSeconds = bufferSizeInSeconds
@@ -52,6 +56,7 @@ public struct AudioPlayerConfiguration: Equatable {
         self.gracePeriodAfterSeekInSeconds = gracePeriodAfterSeekInSeconds
         self.secondsRequiredToStartPlayingAfterBufferUnderun = secondsRequiredToStartPlayingAfterBufferUnderun
         self.enableLogs = enableLogs
+        self.urlSessionConfiguration = urlSessionConfiguration
     }
 
     /// Normalize values on any zero values passed
@@ -79,6 +84,7 @@ public struct AudioPlayerConfiguration: Equatable {
                                         secondsRequiredToStartPlaying: secondsRequiredToStartPlaying,
                                         gracePeriodAfterSeekInSeconds: gracePeriodAfterSeekInSeconds,
                                         secondsRequiredToStartPlayingAfterBufferUnderun: secondsRequiredToStartPlayingAfterBufferUnderun,
-                                        enableLogs: enableLogs)
+                                        enableLogs: enableLogs,
+                                        urlSessionConfiguration: urlSessionConfiguration)
     }
 }

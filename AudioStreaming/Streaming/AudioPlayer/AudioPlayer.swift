@@ -145,7 +145,8 @@ open class AudioPlayer {
         sourceQueue = DispatchQueue(label: "source.queue", qos: .userInitiated)
         audioReadSource = DispatchTimerSource(interval: .milliseconds(200), queue: sourceQueue)
 
-        entryProvider = AudioEntryProvider(networkingClient: NetworkingClient(),
+        let networkingClient = NetworkingClient(configuration: configuration.urlSessionConfiguration)
+        entryProvider = AudioEntryProvider(networkingClient: networkingClient,
                                            underlyingQueue: sourceQueue,
                                            outputAudioFormat: outputAudioFormat)
 
@@ -691,34 +692,11 @@ open class AudioPlayer {
                                                                duration: duration)
                 }
                 
-                let url = try! FileManager.default.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: true).appendingPathComponent("\(Int(Date().timeIntervalSince1970)).wav")
-
-                let outputFormatSettings = [
-                    AVFormatIDKey: kAudioFormatLinearPCM,
-                    AVLinearPCMBitDepthKey: 32,
-                    AVLinearPCMIsFloatKey: true,
-                    //  AVLinearPCMIsBigEndianKey: false,
-                    AVSampleRateKey: 44100.0,
-                    AVNumberOfChannelsKey: 2
-                    ] as [String : Any]
-
-                let format = AVAudioFormat(settings: outputFormatSettings)!
-                let writeFile = try! AVAudioFile(forWriting: url,
-                                                 settings: outputFormatSettings,
-                                                 commonFormat: .pcmFormatFloat32,
-                                                 interleaved: true)
-
-                if let pcmBuffer = AVAudioPCMBuffer(pcmFormat: format,
-                                                    frameCapacity: self.rendererContext.bufferContext.totalFrameCount) {
-                    memcpy(pcmBuffer.mutableAudioBufferList[0].mBuffers.mData,
-                           self.rendererContext.audioBuffer.mData,
-                           Int(self.rendererContext.audioBuffer.mDataByteSize))
-                    pcmBuffer.mutableAudioBufferList[0].mBuffers.mNumberChannels = 2
-                    pcmBuffer.mutableAudioBufferList[0].mBuffers.mDataByteSize = self.rendererContext.audioBuffer.mDataByteSize
-                    pcmBuffer.mutableAudioBufferList[0].mNumberBuffers = 1
-                    pcmBuffer.frameLength = self.rendererContext.bufferContext.totalFrameCount
-                    try! writeFile.write(from: pcmBuffer)
-                }
+//                let url = try! FileManager.default.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: true).appendingPathComponent("\(Int(Date().timeIntervalSince1970)).wav")
+//
+//                writeBuffer(self.rendererContext.audioBuffer,
+//                            totalFrameCount: self.rendererContext.bufferContext.totalFrameCount,
+//                            to: url)
             }
         }
 

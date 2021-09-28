@@ -61,7 +61,7 @@ final class AudioPlayerRenderProcessor: NSObject {
         let audioBuffer = rendererContext.audioBuffer
         var bufferList = rendererContext.inOutAudioBufferList[0]
         let bufferContext = rendererContext.bufferContext
-        let frameSizeInBytes = bufferContext.sizeInBytes
+        let frameSizeInBytes = bufferContext.bytesPerFrame
         let used = bufferContext.frameUsedCount
         let start = bufferContext.frameStartIndex
         let end = bufferContext.end

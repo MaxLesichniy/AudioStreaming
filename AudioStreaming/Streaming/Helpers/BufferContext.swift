@@ -6,7 +6,7 @@
 import Foundation
 
 final class BufferContext {
-    let sizeInBytes: UInt32
+    let bytesPerFrame: UInt32
     let totalFrameCount: UInt32
 
     var frameStartIndex: UInt32 = 0
@@ -16,8 +16,8 @@ final class BufferContext {
         (frameStartIndex + frameUsedCount) % totalFrameCount
     }
 
-    init(sizeInBytes: UInt32, totalFrameCount: UInt32) {
-        self.sizeInBytes = sizeInBytes
+    init(bytesPerFrame: UInt32, totalFrameCount: UInt32) {
+        self.bytesPerFrame = bytesPerFrame
         self.totalFrameCount = totalFrameCount
     }
 

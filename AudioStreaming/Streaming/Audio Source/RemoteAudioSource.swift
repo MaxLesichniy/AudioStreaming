@@ -279,9 +279,9 @@ public class RemoteAudioSource: AudioStreamSource {
 
     private func buildUrlRequest(with url: URL, seekIfNeeded seekOffset: Int) -> URLRequest {
         var urlRequest = URLRequest(url: url)
-        urlRequest.networkServiceType = .avStreaming
-        urlRequest.cachePolicy = .reloadIgnoringLocalCacheData
-        urlRequest.timeoutInterval = 60
+//        urlRequest.networkServiceType = .avStreaming
+//        urlRequest.cachePolicy = .returnCacheDataElseLoad
+//        urlRequest.timeoutInterval = 60
 
         for header in additionalRequestHeaders {
             urlRequest.addValue(header.value, forHTTPHeaderField: header.key)

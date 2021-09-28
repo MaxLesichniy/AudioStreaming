@@ -30,6 +30,7 @@ protocol StreamTaskProvider: AnyObject {
 }
 
 extension URLSessionConfiguration {
+    
     static var networkingConfiguration: URLSessionConfiguration {
         let configuration = URLSessionConfiguration.default
         configuration.networkServiceType = .avStreaming
@@ -39,6 +40,7 @@ extension URLSessionConfiguration {
         configuration.shouldUseExtendedBackgroundIdleMode = true
         return configuration
     }
+    
 }
 
 internal final class NetworkingClient {

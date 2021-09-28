@@ -48,12 +48,12 @@ public final class AudioRendererContext {
 
         let bufferTotalFrameCount = UInt32(dataByteSize) / canonicalStream.mBytesPerFrame
 
-        bufferContext = BufferContext(sizeInBytes: canonicalStream.mBytesPerFrame,
+        bufferContext = BufferContext(bytesPerFrame: canonicalStream.mBytesPerFrame,
                                       totalFrameCount: bufferTotalFrameCount)
     }
 
     func fillSilenceAudioBuffer() {
-        let count = Int(bufferContext.totalFrameCount * bufferContext.sizeInBytes)
+        let count = Int(bufferContext.totalFrameCount * bufferContext.bytesPerFrame)
         memset(audioBuffer.mData, 0, count)
     }
 

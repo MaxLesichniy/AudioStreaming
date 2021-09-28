@@ -433,7 +433,7 @@ final class AudioFileStreamProcessor {
                 var framesAdded: UInt32 = 0
                 var framesToDecode: UInt32 = rendererContext.bufferContext.totalFrameCount - end
 
-                let offset = Int(end * rendererContext.bufferContext.sizeInBytes)
+                let offset = Int(end * rendererContext.bufferContext.bytesPerFrame)
                 prefillLocalBufferList(bufferList: localBufferList,
                                        dataOffset: offset,
                                        framesToDecode: framesToDecode)
@@ -446,7 +446,18 @@ final class AudioFileStreamProcessor {
                                                          nil)
 
                 framesAdded = framesToDecode
-
+                
+//                let url = try! FileManager.default.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: true).appendingPathComponent("aaa_\(Date().timeIntervalSince1970).wav")
+//
+//                writeBuffer(self.rendererContext.audioBuffer,
+//                            totalFrameCount: self.rendererContext.bufferContext.totalFrameCount,
+//                            to: url)
+                
+//                let d = Data(bytes: rendererContext.audioBuffer.mData! + offset,
+//                             count: Int(framesToDecode * rendererContext.bufferContext.bytesPerFrame))
+//                print(d.hexEncodedString())
+                
+                
                 if status == AudioConvertStatus.done.rawValue {
                     fillUsedFrames(framesCount: framesAdded)
                     return
@@ -487,7 +498,7 @@ final class AudioFileStreamProcessor {
                 var framesAdded: UInt32 = 0
                 var framesToDecode: UInt32 = start - end
 
-                let offset = Int(end * rendererContext.bufferContext.sizeInBytes)
+                let offset = Int(end * rendererContext.bufferContext.bytesPerFrame)
                 prefillLocalBufferList(bufferList: localBufferList,
                                        dataOffset: offset,
                                        framesToDecode: framesToDecode)
@@ -524,12 +535,14 @@ final class AudioFileStreamProcessor {
                                         dataOffset: Int,
                                         framesToDecode: UInt32)
     {
-        Logger.debug("prefillLocalBufferList dataOffset: %d, framesToDecode: %d", category: .generic, args: dataOffset, framesToDecode)
+//        Logger.debug("prefillLocalBufferList dataOffset: %i, framesToDecode: %u",
+//                     category: .generic, args: dataOffset, framesToDecode)
+        print("prefillLocalBufferList dataOffset: \(dataOffset), framesToDecode: \(framesToDecode)")
         
         if let mData = rendererContext.audioBuffer.mData {
             bufferList[0].mData = dataOffset > 0 ? mData + dataOffset : mData
         }
-        bufferList[0].mDataByteSize = framesToDecode * rendererContext.bufferContext.sizeInBytes
+        bufferList[0].mDataByteSize = framesToDecode * rendererContext.bufferContext.bytesPerFrame
         bufferList[0].mNumberChannels = rendererContext.audioBuffer.mNumberChannels
     }
 
@@ -538,6 +551,9 @@ final class AudioFileStreamProcessor {
     /// - parameter frameCount: An `UInt32` value to be added to the used count of the buffers.
     @inline(__always)
     private func fillUsedFrames(framesCount: UInt32) {
+        Logger.debug("fillUsedFrames framesCount: %u",
+                     category: .generic, args: framesCount)
+        
         rendererContext.lock.lock()
         rendererContext.bufferContext.frameUsedCount += framesCount
         rendererContext.lock.unlock()
