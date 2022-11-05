@@ -78,7 +78,7 @@ struct HTTPHeaderParser: HTTPHeaderParsing {
 
 extension Parser where Self: HTTPHeaderParsing {
     func value(forHTTPHeaderField field: String, in response: HTTPURLResponse) -> String? {
-        if #available(iOS 13.0, *) {
+        if #available(iOS 13.0, tvOS 13.0, *) {
             return response.value(forHTTPHeaderField: field)
         } else {
             if let fields = response.allHeaderFields as? [String: String] {

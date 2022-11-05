@@ -449,7 +449,7 @@ open class AudioPlayer {
             }
         }
 
-        fileStreamProcessor.fileStreamCallback = { [weak self] effect in
+        fileStreamProcessor.callback = { [weak self] effect in
             guard let self = self else { return }
             switch effect {
             case .proccessSource:

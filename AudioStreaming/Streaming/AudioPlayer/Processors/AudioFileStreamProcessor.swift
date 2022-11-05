@@ -29,7 +29,7 @@ enum FileStreamProcessorEffect {
 final class AudioFileStreamProcessor {
     private let maxCompressedPacketForBitrate = 4096 * 4
 
-    var fileStreamCallback: ((FileStreamProcessorEffect) -> Void)?
+    var callback: ((FileStreamProcessorEffect) -> Void)?
 
     private let playerContext: AudioPlayerContext
     private let rendererContext: AudioRendererContext
@@ -48,8 +48,7 @@ final class AudioFileStreamProcessor {
 
     init(playerContext: AudioPlayerContext,
          rendererContext: AudioRendererContext,
-         outputAudioFormat: AudioStreamBasicDescription)
-    {
+         outputAudioFormat: AudioStreamBasicDescription) {
         self.playerContext = playerContext
         self.rendererContext = rendererContext
         self.outputAudioFormat = outputAudioFormat
@@ -63,7 +62,7 @@ final class AudioFileStreamProcessor {
 
     func openFileStream(with fileHint: AudioFileTypeID) -> OSStatus {
         let data = UnsafeMutableRawPointer.from(object: self)
-        return AudioFileStreamOpen(data, _propertyListenerProc, _propertyPacketsProc, fileHint, &audioFileStream)
+        return AudioFileStreamOpen(data, _propertyListenerProc, _packetsProc, fileHint, &audioFileStream)
     }
 
     /// Closes the currently open `AudioFileStream` instance, if opened.
@@ -174,7 +173,7 @@ final class AudioFileStreamProcessor {
             let audioConverterStatus = AudioConverterNew(&inputFormat, &outputFormat, &audioConverter)
             guard audioConverterStatus == noErr else {
                 let audioConverterError = AudioConverterError(osstatus: audioConverterStatus)
-                fileStreamCallback?(.raiseError(.audioSystemError(.converterError(audioConverterError))))
+                callback?(.raiseError(.audioSystemError(.converterError(audioConverterError))))
                 return
             }
         }
@@ -193,11 +192,11 @@ final class AudioFileStreamProcessor {
                 return
             }
             guard let converter = audioConverter else {
-                fileStreamCallback?(.raiseError(.audioSystemError(.fileStreamError(.unknownError))))
+                callback?(.raiseError(.audioSystemError(.fileStreamError(.unknownError))))
                  return
             }
             guard AudioConverterSetProperty(converter, kAudioConverterDecompressionMagicCookie, cookieSize, cookie) == noErr else {
-                fileStreamCallback?(.raiseError(.audioSystemError(.fileStreamError(.unknownError))))
+                callback?(.raiseError(.audioSystemError(.fileStreamError(.unknownError))))
                 return
             }
         }
@@ -341,7 +340,7 @@ final class AudioFileStreamProcessor {
 
     // MARK: Packets Proc
 
-    func propertyPacketsProc(inNumberBytes: UInt32,
+    func packetsProc(inNumberBytes: UInt32,
                              inNumberPackets: UInt32,
                              inInputData: UnsafeRawPointer,
                              inPacketDescriptions: UnsafeMutablePointer<AudioStreamPacketDescription>?)
@@ -352,7 +351,7 @@ final class AudioFileStreamProcessor {
         if let playingEntry = playerContext.audioPlayingEntry,
            playingEntry.seekRequest.requested, playingEntry.calculatedBitrate() > 0
         {
-            fileStreamCallback?(.proccessSource)
+            callback?(.proccessSource)
             if rendererContext.waiting {
                 rendererContext.packetsSemaphore.signal()
             }
@@ -413,7 +412,7 @@ final class AudioFileStreamProcessor {
                     if let playingEntry = playerContext.audioPlayingEntry,
                        playingEntry.seekRequest.requested, playingEntry.calculatedBitrate() > 0
                     {
-                        fileStreamCallback?(.proccessSource)
+                        callback?(.proccessSource)
                         if rendererContext.waiting {
                             rendererContext.packetsSemaphore.signal()
                         }
@@ -462,7 +461,7 @@ final class AudioFileStreamProcessor {
                     fillUsedFrames(framesCount: framesAdded)
                     return
                 } else if status != 0 {
-                    fileStreamCallback?(.raiseError(.codecError))
+                    callback?(.raiseError(.codecError))
                     return
                 }
 
@@ -491,7 +490,7 @@ final class AudioFileStreamProcessor {
                     fillUsedFrames(framesCount: framesAdded)
                     continue packetProccess
                 } else if status != 0 {
-                    fileStreamCallback?(.raiseError(.codecError))
+                    callback?(.raiseError(.codecError))
                     return
                 }
             } else {
@@ -518,7 +517,7 @@ final class AudioFileStreamProcessor {
                     fillUsedFrames(framesCount: framesAdded)
                     continue packetProccess
                 } else if status != 0 {
-                    fileStreamCallback?(.raiseError(.codecError))
+                    callback?(.raiseError(.codecError))
                     return
                 }
             }
@@ -537,7 +536,7 @@ final class AudioFileStreamProcessor {
     {
 //        Logger.debug("prefillLocalBufferList dataOffset: %i, framesToDecode: %u",
 //                     category: .generic, args: dataOffset, framesToDecode)
-        print("prefillLocalBufferList dataOffset: \(dataOffset), framesToDecode: \(framesToDecode)")
+//        print("prefillLocalBufferList dataOffset: \(dataOffset), framesToDecode: \(framesToDecode)")
         
         if let mData = rendererContext.audioBuffer.mData {
             bufferList[0].mData = dataOffset > 0 ? mData + dataOffset : mData
@@ -551,8 +550,8 @@ final class AudioFileStreamProcessor {
     /// - parameter frameCount: An `UInt32` value to be added to the used count of the buffers.
     @inline(__always)
     private func fillUsedFrames(framesCount: UInt32) {
-        Logger.debug("fillUsedFrames framesCount: %u",
-                     category: .generic, args: framesCount)
+//        Logger.debug("fillUsedFrames framesCount: %u",
+//                     category: .generic, args: framesCount)
         
         rendererContext.lock.lock()
         rendererContext.bufferContext.frameUsedCount += framesCount
@@ -597,17 +596,17 @@ private func _propertyListenerProc(clientData: UnsafeMutableRawPointer,
                                    flags: flags)
 }
 
-private func _propertyPacketsProc(clientData: UnsafeMutableRawPointer,
-                                  inNumberBytes: UInt32,
-                                  inNumberPackets: UInt32,
-                                  inInputData: UnsafeRawPointer,
-                                  inPacketDescriptions: UnsafeMutablePointer<AudioStreamPacketDescription>?)
+private func _packetsProc(clientData: UnsafeMutableRawPointer,
+                          inNumberBytes: UInt32,
+                          inNumberPackets: UInt32,
+                          inInputData: UnsafeRawPointer,
+                          inPacketDescriptions: UnsafeMutablePointer<AudioStreamPacketDescription>?)
 {
     let processor = clientData.to(type: AudioFileStreamProcessor.self)
-    processor.propertyPacketsProc(inNumberBytes: inNumberBytes,
-                                  inNumberPackets: inNumberPackets,
-                                  inInputData: inInputData,
-                                  inPacketDescriptions: inPacketDescriptions)
+    processor.packetsProc(inNumberBytes: inNumberBytes,
+                          inNumberPackets: inNumberPackets,
+                          inInputData: inInputData,
+                          inPacketDescriptions: inPacketDescriptions)
 }
 
 // MARK: - AudioConverterFillComplexBuffer callback method
